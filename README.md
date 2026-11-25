@@ -12,9 +12,12 @@ Every change is tested automatically on clean Windows, Mac and Linux machines (b
 **Video guide (95 s):** [watch / download](https://github.com/katana7436/ReelLab/releases/latest/download/ReelLab_guide.mp4)
 
 ## Download
-Click the green **Code** button on this page, then **Download ZIP**.
+Easiest: from the [latest release](https://github.com/katana7436/ReelLab/releases/latest) download
+**[ReelLab-windows.zip](https://github.com/katana7436/ReelLab/releases/latest/download/ReelLab-windows.zip)** or
+**[ReelLab-mac.zip](https://github.com/katana7436/ReelLab/releases/latest/download/ReelLab-mac.zip)**.
+(Or click the green **Code** button > **Download ZIP** for both in one.)
 - **Windows:** right-click the zip > *Extract All*. A short path such as `D:\ReelLab` or `C:\ReelLab` is safest.
-- **Mac:** double-click the zip, then move the `ReelLab-main` folder somewhere easy, e.g. your home folder.
+- **Mac:** double-click the zip, then move the `ReelLab` folder somewhere easy, e.g. your home folder.
 
 You need about **3 GB free disk** and internet for the first install. No admin password is needed, and nothing is installed outside the ReelLab folder.
 
