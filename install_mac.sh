@@ -36,16 +36,15 @@ if [ ! -x "$BIN/ffmpeg" ] || [ ! -x "$BIN/ffprobe" ]; then
     if [ "$OS" = Darwin ]; then
       # static builds by Martin Riedl (native for Apple Silicon and Intel)
       fetch "https://ffmpeg.martin-riedl.de/redirect/latest/$FOS/$FA/release/$t.zip" "$DL/$t.zip"
-      unzip -o -q "$DL/$t.zip" -d "$BIN"
+      unzip -o -q "$DL/$t.zip" -d "$BIN" && chmod +x "$BIN/$t"
     else
       if command -v $t >/dev/null; then ln -sf "$(command -v $t)" "$BIN/$t";
       else echo "  please install ffmpeg with your package manager (e.g. sudo apt install ffmpeg) and run again"; exit 1; fi
     fi
   done
-  chmod +x "$BIN/ffmpeg" "$BIN/ffprobe"
   [ "$OS" = Darwin ] && xattr -dr com.apple.quarantine "$BIN" 2>/dev/null || true
 else echo "  already installed"; fi
-"$BIN/ffmpeg" -version | head -1
+"$BIN/ffmpeg" -version | sed -n 1p   # (not head: it would break the pipe under pipefail)
 
 step "3/4 Python 3.12 + libraries (a few minutes)"
 if [ -f "$ROOT/.venv/pyvenv.cfg" ] && ! grep -q "$TOOLS/python" "$ROOT/.venv/pyvenv.cfg"; then
