@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReelLab Editor</title>
+<style>
+:root{
+  --bg:#111214; --panel:#1a1c20; --panel2:#22252b; --line:#2e3239; --text:#e6e8eb; --dim:#9aa0a8;
+  --accent:#4da3ff; --hero:#ffb547; --ok:#4cc38a; --bad:#ff6b6b; --beat:#59606b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,select,input{font:inherit;color:inherit}
+button{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:disabled{opacity:.4;cursor:default}
+button.primary{background:var(--accent);border-color:var(--accent);color:#06121f;font-weight:600}
+button.on{border-color:var(--hero);color:var(--hero)}
+select{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+.app{display:grid;grid-template-rows:48px 1fr 190px;grid-template-columns:minmax(0,1fr);height:100vh}
+main,.timeline,.side,.scroll{min-width:0}
+header{display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:14px;margin:0 8px 0 0;letter-spacing:.3px}
+header .sp{flex:1}
+#status{color:var(--dim);max-width:40vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#status.err{color:var(--bad)} #status.ok{color:var(--ok)}
+.dirty{color:var(--hero);font-weight:600}
+main{display:grid;grid-template-columns:auto 1fr;min-height:0}
+.player{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px;border-right:1px solid var(--line);min-height:0}
+.screen{position:relative;height:calc(100% - 44px);aspect-ratio:9/16;background:#000;border-radius:6px;overflow:hidden;flex:none}
+.screen video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0}
+.screen video.show{opacity:1}
+.screen .wait{position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:var(--dim);font-size:12px;text-align:center;padding:20px}
+.screen.loading .wait{display:flex}
+.transport{display:flex;align-items:center;gap:8px}
+#time{font-variant-numeric:tabular-nums;color:var(--dim);min-width:110px;text-align:center}
+.side{overflow:auto;padding:12px 16px;min-height:0}
+.side h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);margin:14px 0 8px}
+.side h2:first-child{margin-top:0}
+.meta{display:flex;flex-wrap:wrap;gap:6px 16px;color:var(--dim)}
+.meta b{color:var(--text);font-weight:500}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.strip{position:relative;display:flex;height:96px;border-radius:6px;overflow:hidden;background:#000;cursor:ew-resize;user-select:none;margin-top:8px}
+.strip img{flex:1;min-width:0;height:100%;object-fit:cover;pointer-events:none}
+.strip .win{position:absolute;top:0;bottom:0;border:2px solid var(--accent);background:rgba(77,163,255,.15);border-radius:3px;pointer-events:none}
+.strip .label{position:absolute;bottom:2px;font-size:10px;color:#fff;text-shadow:0 0 3px #000;padding:0 4px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.cands{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--candw,92px),1fr));gap:8px}
+.cand{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden;cursor:pointer;padding:0;text-align:left}
+.cand img{display:block;width:100%;aspect-ratio:var(--ar,9/16);object-fit:cover;background:#000}
+.cand .cap{padding:3px 5px;font-size:11px;color:var(--dim);display:flex;justify-content:space-between}
+.cand.used::after{content:"in reel";position:absolute;top:4px;left:4px;font-size:10px;background:rgba(0,0,0,.7);padding:1px 5px;border-radius:4px}
+.cand.cur{outline:2px solid var(--accent)}
+.cand:disabled{opacity:.3}
+.timeline{border-top:1px solid var(--line);background:var(--panel);display:grid;grid-template-rows:28px 1fr;min-height:0}
+.tlbar{display:flex;align-items:center;gap:10px;padding:0 12px;color:var(--dim);font-size:12px}
+.tlbar input{width:140px}
+.scroll{overflow-x:auto;overflow-y:hidden;position:relative;padding:0 12px 8px}
+.track{position:relative;height:100%;min-height:140px}
+.ruler{position:absolute;left:0;right:0;top:0;height:22px;cursor:pointer;border-bottom:1px solid var(--line)}
+.ruler .tick{position:absolute;top:0;height:22px;border-left:1px solid var(--line);font-size:10px;color:var(--dim);padding-left:3px}
+.ruler .beat{position:absolute;bottom:0;width:1px;height:7px;background:var(--beat)}
+.clips{position:absolute;left:0;top:30px;height:96px}
+.clip{position:absolute;top:0;height:96px;border-radius:5px;overflow:hidden;background:#000 center/cover no-repeat;
+  border:2px solid transparent;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.clip.sel{border-color:var(--accent)}
+.clip.hero{box-shadow:inset 0 0 0 2px var(--hero)}
+.clip .n{position:absolute;top:2px;left:4px;font-size:10px;text-shadow:0 0 3px #000}
+.clip .hb{position:absolute;bottom:2px;left:4px;font-size:9px;color:var(--hero);font-weight:700;text-shadow:0 0 3px #000}
+.clip .dot{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--dim)}
+.clip .dot.ready{background:var(--ok)}
+.playhead{position:absolute;top:0;bottom:0;width:2px;background:#fff;pointer-events:none;z-index:3}
+.empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--dim);text-align:center;padding:30px}
+.keys{color:var(--dim);font-size:11px;margin-top:16px;line-height:1.7}
+kbd{background:var(--panel2);border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:10px}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:12px}
+dialog::backdrop{background:rgba(0,0,0,.7)}
+dialog video{display:block;max-height:75vh;max-width:90vw;background:#000}
+/* narrow window: stack player above the clip panel, page scrolls */
+@media (max-width:900px){
+  .app{height:auto;min-height:100vh;grid-template-rows:auto auto 190px}
+  header{flex-wrap:wrap;padding:8px 12px;row-gap:6px}
+  header .sp{display:none}
+  #status{max-width:100%;order:10;flex-basis:100%}
+  main{grid-template-columns:1fr}
+  .player{border-right:0;border-bottom:1px solid var(--line)}
+  .side{overflow:visible}
+  .timeline{position:sticky;bottom:0}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>ReelLab Editor</h1>
+    <select id="trip" title="Trip"></select>
+    <button id="undo" title="Undo (Ctrl+Z)">Undo</button>
+    <button id="redo" title="Redo (Ctrl+Y)">Redo</button>
+    <button id="revert" title="Load the version from before your last save">Load previous save</button>
+    <span id="dirty"></span>
+    <span class="sp"></span>
+    <span id="status"></span>
+    <button id="save" class="primary" title="Save timeline.json + reel_timeline.fcpxml (Ctrl+S)">Save</button>
+    <button id="render" title="Save, then render the full-quality reel_preview.mp4">Render preview</button>
+    <button id="openprev" title="Watch the last rendered reel_preview.mp4">Watch render</button>
+    <button id="insta" title="Publish the last render as an Instagram Reel">Post to Instagram</button>
+  </header>
+  <main>
+    <section class="player">
+      <div class="screen" id="screen"><div class="wait">Making low-res preview clips...<br>(4K footage takes a moment)</div></div>
+      <div class="transport">
+        <button id="prev" title="Previous clip (Left)">&#9664;&#9664;</button>
+        <button id="play" title="Play / pause (Space)" style="min-width:64px">Play</button>
+        <button id="next" title="Next clip (Right)">&#9654;&#9654;</button>
+        <span id="time">0.00 / 0.00</span>
+      </div>
+    </section>
+    <section class="side" id="side"><div class="empty">Loading...</div></section>
+  </main>
+  <section class="timeline">
+    <div class="tlbar">
+      <span id="tlinfo"></span><span style="flex:1"></span>
+      Zoom <input type="range" id="zoom" min="20" max="300" value="80">
+    </div>
+    <div class="scroll" id="scroll">
+      <div class="track" id="track">
+        <div class="ruler" id="ruler"></div>
+        <div class="clips" id="clips"></div>
+        <div class="playhead" id="playhead"></div>
+      </div>
+    </div>
+  </section>
+</div>
+<dialog id="dlg"><video id="dlgv" controls></video><div class="row" style="margin-top:8px;justify-content:flex-end"><button onclick="dlg.close();dlgv.pause()">Close</button></div></dialog>
+<dialog id="igdlg" style="width:min(520px,92vw)">
+  <h2 style="margin:0 0 8px;font-size:15px">Post to Instagram</h2>
+  <div id="iginfo" style="color:var(--dim);margin-bottom:8px">checking...</div>
+  <textarea id="igcap" rows="6" maxlength="2200" placeholder="Caption, #hashtags" style="width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px;font:inherit"></textarea>
+  <div class="row" style="justify-content:space-between;margin:6px 0 10px"><label><input type="checkbox" id="igfeed" checked> also show in main feed</label><span id="igcount" style="color:var(--dim)">0 / 2200</span></div>
+  <div id="igstate" style="min-height:20px;margin-bottom:8px"></div>
+  <div class="row" style="justify-content:flex-end"><button id="igclose">Close</button><button id="igpost" class="primary" disabled>Post publicly</button></div>
+</dialog>
+<audio id="music" preload="auto"></audio>
+
+<script>
+const $ = id => document.getElementById(id);
+const audio = $("music"), screen = $("screen");
+const FR = 1 / 30;
+let S = {trip: null, tl: null, shots: [], sel: 0, undo: [], redo: [], dirty: false, pps: 80};
+let vids = [];          // one <video> per clip, holding its low-res proxy
+let playing = false;
+let gestureOpen = false; // one undo step per drag / slider gesture
+
+// ---------- helpers ----------
+const enc = encodeURIComponent;
+const clips = () => S.tl ? S.tl.clips : [];
+const total = () => clips().reduce((a, c) => a + c.dur, 0);
+const shotLen = c => c.shot_end - c.shot_start;
+const base = f => f.split(/[\\/]/).pop();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = t => (Math.round(t * 100) / 100).toFixed(2);
+function status(msg, cls = "") { const s = $("status"); s.textContent = msg; s.className = cls; s.title = msg; }
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : {method: "POST", body: JSON.stringify(body)});
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+const thumbUrl = (file, t) => `/thumb?trip=${enc(S.trip)}&file=${enc(file)}&t=${(Math.round(t * 4) / 4).toFixed(2)}`;
+const proxyUrl = c => `/proxy?trip=${enc(S.trip)}&file=${enc(c.file)}&t=${c.src_in.toFixed(3)}&dur=${c.dur.toFixed(3)}&hero=${c.hero ? 1 : 0}`;
+
+function relayout() {
+  let pos = 0;
+  for (const c of clips()) { c.rec_in = Math.round(pos * 1000) / 1000; pos += c.dur; }
+}
+function snapshot() { return JSON.stringify({clips: clips(), sel: S.sel}); }
+function pushUndo() {
+  S.undo.push(snapshot()); if (S.undo.length > 200) S.undo.shift();
+  S.redo = [];
+}
+function restore(snap) { const o = JSON.parse(snap); S.tl.clips = o.clips; S.sel = clamp(o.sel, 0, o.clips.length - 1); }
+function changed(opts = {}) {
+  relayout();
+  S.dirty = true;
+  S.sel = clamp(S.sel, 0, clips().length - 1);
+  drawAll();
+  syncVideos(opts.debounce);
+  if (opts.seek !== false) seek(clips()[S.sel].rec_in);
+}
+function edit(fn, opts) {         // every timeline change goes through here
+  const before = snapshot();
+  const err = fn();
+  if (err) { status(err, "err"); return false; }
+  S.undo.push(before); if (S.undo.length > 200) S.undo.shift(); S.redo = [];
+  if ($("status").className === "err") status("");
+  changed(opts); return true;
+}
+function fitIn(c) { c.src_in = clamp(c.src_in, c.shot_start, Math.max(c.shot_start, c.shot_end - c.dur)); }
+
+// ---------- loading ----------
+async function init() {
+  if (location.protocol === "file:") {      // opened by double-clicking the .html: there is no server to talk to
+    $("side").innerHTML = `<div class="empty">This page needs the editor server.<br><br>
+      Double-click <b>START_EDITOR.bat</b> in the ReelLab folder<br>(or run <code>.venv\\Scripts\\python.exe editor.py</code>),<br>
+      then open <b>http://127.0.0.1:8765</b></div>`;
+    status("not connected - start the editor server", "err");
+    return;
+  }
+  try {
+    const {trips, out} = await api("/api/trips");
+    const sel = $("trip");
+    sel.innerHTML = trips.map(t => `<option>${t}</option>`).join("");
+    if (!trips.length) {
+      $("side").innerHTML = `<div class="empty">No timelines yet in ${out}.<br><br>Run autocut.py first, e.g.<br><code>python autocut.py --trip himachal --style --no-preview</code><br>It writes output\\&lt;trip&gt;\\timeline.json, which this editor opens.</div>`;
+      return;
+    }
+    let want = trips[0];
+    try { const last = localStorage.getItem("reellab.trip"); if (trips.includes(last)) want = last; } catch (e) {}
+    sel.value = want;
+    await loadTrip(want);
+  } catch (e) { status(e.message, "err"); }
+}
+async function loadTrip(trip) {
+  if (S.dirty && !confirm("You have unsaved changes. Switch trip and lose them?")) { $("trip").value = S.trip; return; }
+  pause();
+  status("loading " + trip + "...");
+  const j = await api(`/api/timeline?trip=${enc(trip)}`);
+  S = {...S, trip, tl: j.timeline, shots: j.shots, sel: 0, undo: [], redo: [], dirty: false};
+  try { localStorage.setItem("reellab.trip", trip); } catch (e) {}
+  vids.forEach(v => v.remove()); vids = [];
+  audio.src = `/music?trip=${enc(trip)}`;
+  const [fw, fh] = S.tl.size || [1080, 1920];
+  document.documentElement.style.setProperty("--ar", `${fw}/${fh}`);
+  document.documentElement.style.setProperty("--candw", fw > fh ? "150px" : "92px");
+  fitScreen();
+  relayout(); fitZoom(); drawAll(); syncVideos(false); seek(0);
+  $("openprev").disabled = !j.has_preview;
+  status(`${clips().length} clips, ${j.shots.length} usable shots in the pool`);
+  const want = +new URLSearchParams(location.search).get("clip");   // ?clip=3 opens on clip 3
+  if (want > 0) select(want - 1);
+}
+
+// player box keeps the timeline's shape (9:16 reels, 16:9 imports) within the space it has
+function fitScreen() {
+  const [fw, fh] = (S.tl && S.tl.size) || [1080, 1920];
+  const narrow = innerWidth <= 900, p = screen.parentElement;
+  const maxH = narrow ? innerHeight * 0.45 : p.clientHeight - 68;
+  const maxW = narrow ? document.documentElement.clientWidth - 24 : Math.min(innerWidth * 0.55, 1200);
+  let h = maxH, w = h * fw / fh;
+  if (w > maxW) { w = maxW; h = w * fh / fw; }
+  Object.assign(screen.style, {width: w + "px", height: h + "px", aspectRatio: "auto"});
+}
+
+// ---------- video pool + playback ----------
+let syncTimer = null;
+function syncVideos(debounce = true) {
+  clearTimeout(syncTimer);
+  const run = () => {
+    const cs = clips();
+    while (vids.length > cs.length) vids.pop().remove();
+    cs.forEach((c, i) => {
+      let v = vids[i];
+      if (!v) {
+        v = document.createElement("video");
+        v.muted = true; v.playsInline = true; v.preload = "auto";
+        v.addEventListener("canplay", () => { v.dataset.ready = "1"; drawReady(); });
+        v.addEventListener("error", () => status("preview clip failed: " + base(clips()[vids.indexOf(v)]?.file || ""), "err"));
+        screen.appendChild(v); vids[i] = v;
+      }
+      const url = proxyUrl(c);
+      if (v.dataset.url !== url) { v.dataset.url = url; v.dataset.ready = ""; v.src = url; }
+    });
+    drawReady();
+  };
+  debounce ? (syncTimer = setTimeout(run, 300)) : run();
+}
+function clipAt(t) {
+  const cs = clips();
+  for (let i = 0; i < cs.length; i++) if (t < cs[i].rec_in + cs[i].dur) return i;
+  return cs.length - 1;
+}
+function seek(t) {
+  t = clamp(t, 0, Math.max(0, total() - 0.001));
+  try { audio.currentTime = t; } catch (e) {}
+  clock.t = t; clock.last = performance.now();
+}
+// clock = the music when it can play, otherwise a timer (so editing works even if audio fails)
+const clock = {t: 0, last: 0, useAudio: true, broken: false};
+audio.addEventListener("error", () => { if (!audio.getAttribute("src")) return; clock.broken = true; clock.useAudio = false; status("music could not be loaded - playing silent", "err"); });
+function now() { return clock.useAudio ? audio.currentTime : clock.t; }
+function play() {
+  if (!clips().length) return;
+  if (now() >= total() - 0.05) seek(0);
+  playing = true; $("play").textContent = "Pause";
+  clock.t = now(); clock.last = performance.now();
+  clock.useAudio = !clock.broken;
+  if (clock.useAudio) audio.play().catch(() => {   // browser blocked sound: keep going on the timer, silent
+    clock.t = audio.currentTime; clock.last = performance.now(); clock.useAudio = false;
+  });
+}
+function pause() {
+  if (playing && !clock.useAudio) { try { audio.currentTime = clock.t; } catch (e) {} }
+  playing = false; $("play").textContent = "Play";
+  audio.pause(); vids.forEach(v => v.paused || v.pause());
+}
+let shown = -1;
+function tick() {
+  if (S.tl && clips().length) {
+    if (playing && !clock.useAudio) { const n = performance.now(); clock.t += (n - clock.last) / 1000; clock.last = n; }
+    let t = now();
+    const T = total();
+    if (playing && t >= T) { pause(); t = T - 0.001; seek(t); }
+    const i = clipAt(t), c = clips()[i], local = t - c.rec_in;
+    if (playing && i !== S.sel) { S.sel = i; drawSel(); }
+    vids.forEach((v, k) => {
+      if (k === i) {
+        if (!v.classList.contains("show")) v.classList.add("show");
+        if (playing) {
+          if (v.paused && v.readyState >= 2) v.play().catch(() => {});
+          if (v.readyState >= 1 && Math.abs(v.currentTime - local) > 0.15) v.currentTime = local;
+        } else {
+          if (!v.paused) v.pause();
+          if (v.readyState >= 1 && Math.abs(v.currentTime - local) > 0.02) v.currentTime = local;
+        }
+      } else if (v.classList.contains("show")) {
+        v.classList.remove("show"); v.pause();
+        if (v.readyState >= 1) v.currentTime = 0;
+      }
+    });
+    screen.classList.toggle("loading", !vids[i] || vids[i].readyState < 2);
+    $("playhead").style.left = (12 + t * S.pps) + "px";
+    $("time").textContent = `${fmt(t)} / ${fmt(T)}`;
+    if (playing) follow(t);
+  }
+}
+function follow(t) {
+  const sc = $("scroll"), x = 12 + t * S.pps;
+  if (x < sc.scrollLeft + 40 || x > sc.scrollLeft + sc.clientWidth - 40) sc.scrollLeft = x - sc.clientWidth / 3;
+}
+
+// ---------- drawing ----------
+function drawAll() { drawTimeline(); drawSide(); updateButtons(); }
+function updateButtons() {
+  $("undo").disabled = !S.undo.length; $("redo").disabled = !S.redo.length;
+  $("dirty").textContent = S.dirty ? "unsaved changes" : ""; $("dirty").className = S.dirty ? "dirty" : "";
+}
+function fitZoom() {
+  const w = $("scroll").clientWidth - 40, T = total() || 30;
+  S.pps = clamp(Math.round(w / T), 20, 300); $("zoom").value = S.pps;
+}
+function drawTimeline() {
+  const T = total(), pps = S.pps, width = Math.max(T * pps + 24, $("scroll").clientWidth);
+  $("track").style.width = width + "px";
+  const step = pps > 120 ? 0.5 : pps > 40 ? 1 : 2;
+  let r = "";
+  for (let s = 0; s <= T + 0.001; s += step) r += `<div class="tick" style="left:${12 + s * pps}px">${s % 1 ? "" : s + "s"}</div>`;
+  for (const b of (S.tl.beats || [])) if (b <= T) r += `<div class="beat" style="left:${12 + b * pps}px"></div>`;
+  $("ruler").innerHTML = r;
+  $("clips").innerHTML = clips().map((c, i) => {
+    const mid = c.src_in + c.dur / 2;
+    return `<div class="clip${i === S.sel ? " sel" : ""}${c.hero ? " hero" : ""}" data-i="${i}"
+      title="${base(c.file)}  ${fmt(c.dur)}s  (in ${fmt(c.src_in)}s)"
+      style="left:${12 + c.rec_in * pps}px;width:${Math.max(4, c.dur * pps - 2)}px;background-image:url('${thumbUrl(c.file, mid)}')">
+      <span class="n">${i + 1}</span>${c.hero ? '<span class="hb">HERO</span>' : ""}<span class="dot"></span></div>`;
+  }).join("");
+  $("tlinfo").textContent = `${clips().length} clips, ${fmt(T)}s` + (S.tl.tempo ? `, ${S.tl.tempo} BPM (ticks = beats)` : "");
+  drawReady();
+}
+function drawReady() {
+  document.querySelectorAll(".clip .dot").forEach((d, i) => d.classList.toggle("ready", !!(vids[i] && vids[i].dataset.ready)));
+}
+function drawSel() {
+  document.querySelectorAll(".clip").forEach((el, i) => el.classList.toggle("sel", i === S.sel));
+  drawSide();
+}
+function usedKey(file, start) { return file + "|" + start.toFixed(3); }
+function drawSide() {
+  const c = clips()[S.sel];
+  if (!c) { $("side").innerHTML = '<div class="empty">Timeline is empty.</div>'; return; }
+  const L = shotLen(c), N = 8;
+  let frames = "";
+  for (let k = 0; k < N; k++) frames += `<img src="${thumbUrl(c.file, c.shot_start + (k + 0.5) * L / N)}" alt="">`;
+  const used = new Set(clips().map(x => usedKey(x.file, x.shot_start)));
+  const fitsOnly = $("side").dataset.fits !== "0";
+  const sortBy = $("side").dataset.sort || "score";
+  let pool = S.shots.filter(s => !fitsOnly || s.end - s.start >= c.dur - 1e-3);
+  if (sortBy === "order") pool = [...pool].sort((a, b) => a.clip_index - b.clip_index || a.start - b.start);
+  const cands = pool.slice(0, 200).map(s => {
+    const k = usedKey(s.file, s.start), fits = s.end - s.start >= c.dur - 1e-3;
+    const cur = k === usedKey(c.file, c.shot_start);
+    return `<button class="cand${used.has(k) ? " used" : ""}${cur ? " cur" : ""}" data-k="${S.shots.indexOf(s)}" ${fits ? "" : "disabled"}
+      title="${base(s.file)}  ${fmt(s.start)}-${fmt(s.end)}s  score ${s.score}">
+      <img loading="lazy" src="${thumbUrl(s.file, (s.start + s.end) / 2)}" alt="">
+      <span class="cap"><span>${fmt(s.end - s.start)}s</span><span>${Math.round(s.score * 100)}</span></span></button>`;
+  }).join("");
+  $("side").innerHTML = `
+    <h2>Clip ${S.sel + 1} of ${clips().length}</h2>
+    <div class="meta"><span>File <b>${base(c.file)}</b></span><span>Length <b>${fmt(c.dur)}s</b></span>
+      <span>Starts at <b>${fmt(c.rec_in)}s</b></span><span>Score <b>${c.score != null ? Math.round(c.score * 100) : "-"}</b></span></div>
+    <h2>Which part of the shot to use</h2>
+    <div class="strip" id="strip">${frames}
+      <div class="win" style="left:${(c.src_in - c.shot_start) / L * 100}%;width:${Math.min(100, c.dur / L * 100)}%"></div>
+      <span class="label" style="left:0">${fmt(c.shot_start)}s</span><span class="label" style="right:0">${fmt(c.shot_end)}s</span></div>
+    <input type="range" id="inpt" min="${c.shot_start}" max="${Math.max(c.shot_start, c.shot_end - c.dur)}" step="${FR}" value="${c.src_in}" ${L - c.dur < FR ? "disabled" : ""}>
+    <div class="row">
+      <button data-nudge="-0.25">-0.25s</button><button data-nudge="-${FR}">-1 frame</button>
+      <span style="color:var(--dim);min-width:90px;text-align:center">in ${fmt(c.src_in)}s</span>
+      <button data-nudge="${FR}">+1 frame</button><button data-nudge="0.25">+0.25s</button>
+    </div>
+    <h2>Clip length</h2>
+    <div class="row">
+      <button data-len="-0.25">-0.25s</button><button data-len="-${FR}">-1 frame</button>
+      <span style="color:var(--dim);min-width:90px;text-align:center">${fmt(c.dur)}s</span>
+      <button data-len="${FR}" ${c.src_in + c.dur > c.shot_end - FR / 2 ? "disabled" : ""}>+1 frame</button><button data-len="0.25" ${c.src_in + c.dur > c.shot_end - FR / 2 ? "disabled" : ""}>+0.25s</button>
+      ${(S.tl.beats || []).length ? '<span style="color:var(--dim)">changing length moves every later cut off the beat</span>' : ""}
+    </div>
+    <h2>Clip actions</h2>
+    <div class="row">
+      <button data-act="hero" class="${c.hero ? "on" : ""}" title="Hero = slightly richer colour, marked HERO in Resolve (H)">${c.hero ? "Hero: on" : "Hero: off"}</button>
+      <button data-act="left" ${S.sel === 0 ? "disabled" : ""} title="Move this clip one place earlier ([)">Move earlier</button>
+      <button data-act="right" ${S.sel === clips().length - 1 ? "disabled" : ""} title="Move this clip one place later (])">Move later</button>
+      <button data-act="split" title="Split at the beat nearest the middle (S)">Split</button>
+      <button data-act="merge" ${S.sel === clips().length - 1 ? "disabled" : ""} title="Join with the next clip, keeping this shot (M)">Merge with next</button>
+      <button data-act="del" title="Remove this clip, the reel gets shorter (Delete)">Delete</button>
+    </div>
+    <h2>Swap in a different shot</h2>
+    <div class="row" style="margin-bottom:8px">
+      <label><input type="checkbox" id="fits" ${fitsOnly ? "checked" : ""}> only shots long enough (${fmt(c.dur)}s)</label>
+      <select id="sort"><option value="score">best score first</option><option value="order" ${sortBy === "order" ? "selected" : ""}>trip order</option></select>
+      <span style="color:var(--dim)">${pool.length} shots${pool.length > 200 ? ", showing 200" : ""}</span>
+    </div>
+    <div class="cands">${cands || '<span style="color:var(--dim)">No shots are long enough. Untick the box or merge less.</span>'}</div>
+    <div class="keys"><kbd>Space</kbd> play &nbsp; <kbd>&larr;</kbd><kbd>&rarr;</kbd> clip &nbsp; <kbd>,</kbd><kbd>.</kbd> nudge 1 frame (<kbd>Shift</kbd> 0.25s) &nbsp;
+      <kbd>[</kbd><kbd>]</kbd> move &nbsp; <kbd>S</kbd> split &nbsp; <kbd>M</kbd> merge &nbsp; <kbd>H</kbd> hero &nbsp; <kbd>Del</kbd> delete &nbsp;
+      <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd> undo/redo &nbsp; <kbd>Ctrl+S</kbd> save</div>`;
+  bindSide();
+}
+
+// ---------- editing ----------
+function setIn(v, push) {
+  const c = clips()[S.sel];
+  if (push) pushUndo();
+  c.src_in = Math.round(v * 1000) / 1000; fitIn(c);
+  S.dirty = true; relayout(); drawTimeline(); updateButtons(); syncVideos(true); seek(c.rec_in);
+  const win = document.querySelector("#strip .win"), L = shotLen(c);
+  if (win) win.style.left = (c.src_in - c.shot_start) / L * 100 + "%";
+  const r = $("inpt"); if (r && document.activeElement !== r) r.value = c.src_in;
+}
+function nudge(d) { setIn(clips()[S.sel].src_in + d, true); drawSide(); }
+function setLen(d) {          // longer uses more of the shot after the out-point; shorter trims the end
+  edit(() => {
+    const c = clips()[S.sel];
+    const room = c.shot_end - c.src_in;
+    const nd = Math.round(clamp(c.dur + d, 2 * FR, room) * 1000) / 1000;
+    if (Math.abs(nd - c.dur) < 1e-4) return d > 0 ? "The shot has no more footage after this clip." : "Clip can't be shorter than 2 frames.";
+    c.dur = nd;
+  });
+}
+const CONTENT = ["file", "src_in", "src_fps", "w", "h", "shot_start", "shot_end", "score"];
+function swapContent(i, j) {
+  const cs = clips(), a = cs[i], b = cs[j];
+  if (shotLen(a) < b.dur - 1e-3 || shotLen(b) < a.dur - 1e-3)
+    return `Can't swap: one shot is shorter than the other slot (${fmt(Math.min(shotLen(a), shotLen(b)))}s). Slots stay on the beat, so lengths don't move.`;
+  for (const k of CONTENT) [a[k], b[k]] = [b[k], a[k]];
+  fitIn(a); fitIn(b); S.sel = j;
+}
+function moveClip(i, j) {
+  if (j < 0 || j >= clips().length) return "nothing to swap with";
+  if ((S.tl.beats || []).length) return swapContent(i, j);   // keep cuts on the beat
+  const cs = clips(); [cs[i], cs[j]] = [cs[j], cs[i]]; S.sel = j;
+}
+const ACTS = {
+  hero: () => { const c = clips()[S.sel]; c.hero = !c.hero; },
+  left: () => moveClip(S.sel, S.sel - 1),
+  right: () => moveClip(S.sel, S.sel + 1),
+  del: () => {
+    if (clips().length <= 1) return "Can't delete the last clip.";
+    clips().splice(S.sel, 1);
+  },
+  merge: () => {
+    const cs = clips(), a = cs[S.sel], b = cs[S.sel + 1];
+    if (!b) return "No next clip.";
+    const d = a.dur + b.dur;
+    if (shotLen(a) >= d - 1e-3) { a.dur = d; }
+    else if (shotLen(b) >= d - 1e-3) { for (const k of CONTENT) a[k] = b[k]; a.dur = d; }
+    else return `Can't merge: neither shot is ${fmt(d)}s long. Swap in a longer shot first.`;
+    a.hero = a.hero || b.hero; fitIn(a); cs.splice(S.sel + 1, 1);
+  },
+  split: () => {
+    const c = clips()[S.sel], a = c.rec_in, b = c.rec_in + c.dur, mid = (a + b) / 2;
+    if (c.dur < 0.5) return "Clip is too short to split (under 0.5s).";
+    const beats = (S.tl.beats || []).filter(t => t > a + 0.25 && t < b - 0.25);
+    const cut = beats.length ? beats.reduce((p, t) => Math.abs(t - mid) < Math.abs(p - mid) ? t : p) : mid;
+    const d1 = Math.round((cut - a) * 1000) / 1000;
+    const second = {...c, dur: Math.round((c.dur - d1) * 1000) / 1000, src_in: c.src_in + d1, hero: false};
+    c.dur = d1;
+    clips().splice(S.sel + 1, 0, second);
+  },
+};
+function act(name) { edit(ACTS[name]); }
+function replaceWith(shot) {
+  edit(() => {
+    const c = clips()[S.sel];
+    if (shot.end - shot.start < c.dur - 1e-3) return "That shot is too short for this slot.";
+    Object.assign(c, {file: shot.file, src_fps: shot.src_fps, w: shot.w, h: shot.h, score: shot.score,
+      shot_start: shot.start, shot_end: shot.end,
+      src_in: shot.start + (shot.end - shot.start - c.dur) / 2});
+    fitIn(c);
+  });
+}
+function bindSide() {
+  const side = $("side");
+  side.querySelectorAll("[data-nudge]").forEach(b => b.onclick = () => nudge(+b.dataset.nudge));
+  side.querySelectorAll("[data-len]").forEach(b => b.onclick = () => setLen(+b.dataset.len));
+  side.querySelectorAll("[data-act]").forEach(b => b.onclick = () => act(b.dataset.act));
+  side.querySelectorAll(".cand").forEach(b => b.onclick = () => replaceWith(S.shots[+b.dataset.k]));
+  $("fits").onchange = e => { side.dataset.fits = e.target.checked ? "1" : "0"; drawSide(); };
+  $("sort").onchange = e => { side.dataset.sort = e.target.value; drawSide(); };
+  const r = $("inpt");
+  r.onpointerdown = () => { pushUndo(); gestureOpen = true; };
+  r.oninput = () => setIn(+r.value, !gestureOpen && (gestureOpen = true));
+  r.onchange = () => { gestureOpen = false; drawSide(); };
+  const strip = $("strip");
+  const at = e => { const c = clips()[S.sel], b = strip.getBoundingClientRect();
+    return c.shot_start + clamp((e.clientX - b.left) / b.width, 0, 1) * shotLen(c) - c.dur / 2; };
+  strip.onpointerdown = e => { strip.setPointerCapture(e.pointerId); pushUndo(); setIn(at(e), false); };
+  strip.onpointermove = e => { if (strip.hasPointerCapture(e.pointerId)) setIn(at(e), false); };
+  strip.onpointerup = e => { strip.releasePointerCapture(e.pointerId); drawSide(); };
+}
+function select(i) {
+  S.sel = clamp(i, 0, clips().length - 1);
+  drawSel(); seek(clips()[S.sel].rec_in);
+  const el = document.querySelector(`.clip[data-i="${S.sel}"]`); if (el) el.scrollIntoView({block: "nearest", inline: "nearest"});
+}
+function undo() { if (!S.undo.length) return; S.redo.push(snapshot()); restore(S.undo.pop()); changed(); }
+function redo() { if (!S.redo.length) return; S.undo.push(snapshot()); restore(S.redo.pop()); changed(); }
+
+// ---------- save / render ----------
+async function save() {
+  try {
+    status("saving...");
+    const j = await api(`/api/save?trip=${enc(S.trip)}`, S.tl);
+    S.tl = j.timeline; S.dirty = false; S.sel = clamp(S.sel, 0, clips().length - 1);
+    drawAll(); syncVideos(false);
+    status("saved timeline.json + reel_timeline.fcpxml", "ok");
+    return true;
+  } catch (e) { status("save failed: " + e.message, "err"); return false; }
+}
+async function render() {
+  if (S.dirty && !(await save())) return;
+  try {
+    await api(`/api/render?trip=${enc(S.trip)}`, {});
+    $("render").disabled = true; pollRender();
+  } catch (e) { status(e.message, "err"); }
+}
+async function pollRender() {
+  const j = await api("/api/status");
+  status(j.msg, j.state === "error" ? "err" : j.state === "done" ? "ok" : "");
+  if (j.state === "running") return setTimeout(pollRender, 2000);
+  $("render").disabled = false;
+  if (j.state === "done") { $("openprev").disabled = false; openPreview(); }
+}
+function openPreview() { pause(); $("dlgv").src = `/preview?trip=${enc(S.trip)}&v=${Date.now()}`; $("dlg").showModal(); }
+
+// ---------- Instagram ----------
+const esc = t => String(t).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+async function openInsta() {
+  if (S.dirty) { status("Save and render first - Instagram gets the last rendered video", "err"); return; }
+  pause(); $("igstate").textContent = ""; $("igpost").disabled = true; $("iginfo").textContent = "checking account and video...";
+  try { const c = localStorage.getItem("reellab.caption." + S.trip); if (c && !$("igcap").value) $("igcap").value = c; } catch (e) {}
+  $("igcount").textContent = `${$("igcap").value.length} / 2200`;
+  $("igdlg").showModal();
+  try {
+    const i = await api(`/api/insta?trip=${enc(S.trip)}`);
+    let h = i.account ? `Account: <b style="color:var(--text)">@${esc(i.account)}</b><br>` : "";
+    if (i.dur) h += `Video: reel_preview.mp4, ${i.w}x${i.h}, ${fmt(i.dur)}s, ${(i.size / 1e6).toFixed(1)} MB<br>`;
+    h += i.problems.map(p => `<span style="color:var(--bad)">${esc(p)}</span>`).join("<br>");
+    h += i.warnings.map(w => `<br><span style="color:var(--hero)">${esc(w)}</span>`).join("");
+    $("iginfo").innerHTML = h; $("igpost").disabled = !i.ready;
+  } catch (e) { $("iginfo").innerHTML = `<span style="color:var(--bad)">${esc(e.message)}</span>`; }
+}
+async function postInsta() {
+  const caption = $("igcap").value.trim();
+  if (!confirm("Publish this reel publicly on Instagram now?")) return;
+  $("igpost").disabled = true;
+  try { await api(`/api/post?trip=${enc(S.trip)}`, {caption, feed: $("igfeed").checked}); }
+  catch (e) { $("igstate").innerHTML = `<span style="color:var(--bad)">${esc(e.message)}</span>`; $("igpost").disabled = false; return; }
+  const poll = async () => {
+    const j = await api("/api/poststatus");
+    $("igstate").innerHTML = j.state === "error" ? `<span style="color:var(--bad)">${esc(j.msg)}</span>`
+      : j.state === "done" ? `<span style="color:var(--ok)">${esc(j.msg)}</span>` + (j.link ? ` - <a href="${esc(j.link)}" target="_blank" style="color:var(--accent)">open post</a>` : "")
+      : esc(j.msg);
+    if (j.state === "running") return setTimeout(poll, 2000);
+    if (j.state === "error") $("igpost").disabled = false;
+  };
+  poll();
+}
+$("insta").onclick = openInsta;
+$("igpost").onclick = postInsta;
+$("igclose").onclick = () => $("igdlg").close();
+$("igcap").oninput = () => { const v = $("igcap").value; $("igcount").textContent = `${v.length} / 2200`;
+  try { localStorage.setItem("reellab.caption." + S.trip, v); } catch (e) {} };
+
+// ---------- wiring ----------
+$("trip").onchange = e => loadTrip(e.target.value).catch(err => status(err.message, "err"));
+$("play").onclick = () => playing ? pause() : play();
+$("prev").onclick = () => { pause(); select(S.sel - 1); };
+$("next").onclick = () => { pause(); select(S.sel + 1); };
+$("undo").onclick = undo; $("redo").onclick = redo;
+$("save").onclick = save; $("render").onclick = render; $("openprev").onclick = openPreview;
+$("revert").onclick = async () => {
+  try { const j = await api(`/api/revert?trip=${enc(S.trip)}`, {}); pushUndo(); S.tl = j.timeline; changed(); status("loaded the previous save - press Save to keep it"); }
+  catch (e) { status(e.message, "err"); }
+};
+$("zoom").oninput = e => { S.pps = +e.target.value; drawTimeline(); };
+$("clips").onclick = e => { const el = e.target.closest(".clip"); if (el) { pause(); select(+el.dataset.i); } };
+$("ruler").onclick = e => { const b = $("track").getBoundingClientRect(); seek((e.clientX - b.left - 12) / S.pps);
+  if (!playing) { S.sel = clipAt(now()); drawSel(); } };
+document.addEventListener("keydown", e => {
+  if (!S.tl || e.target.matches("input[type=checkbox], select, textarea") || $("dlg").open || $("igdlg").open) return;
+  const k = e.key, ctrl = e.ctrlKey || e.metaKey;
+  if (ctrl && k.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (ctrl && k.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
+  if (ctrl && k.toLowerCase() === "s") { e.preventDefault(); save(); return; }
+  if (ctrl || e.altKey) return;
+  const map = {" ": () => playing ? pause() : play(), ArrowLeft: () => { pause(); select(S.sel - 1); },
+    ArrowRight: () => { pause(); select(S.sel + 1); }, ",": () => nudge(e.shiftKey ? -0.25 : -FR),
+    ".": () => nudge(e.shiftKey ? 0.25 : FR), "<": () => nudge(-0.25), ">": () => nudge(0.25),
+    "[": () => act("left"), "]": () => act("right"), s: () => act("split"), m: () => act("merge"),
+    h: () => act("hero"), Delete: () => act("del")};
+  const f = map[k] || map[k.toLowerCase()];
+  if (f) { e.preventDefault(); if (e.target.blur) e.target.blur(); f(); }
+});
+window.addEventListener("beforeunload", e => { if (S.dirty) { e.preventDefault(); e.returnValue = ""; } });
+window.addEventListener("resize", () => { if (S.tl) { fitScreen(); drawTimeline(); } });
+setInterval(tick, 33);   // ~30 fps; a timer keeps running where requestAnimationFrame may pause
+init();
+</script>
+</body>
+</html>

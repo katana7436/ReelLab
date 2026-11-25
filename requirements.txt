@@ -1,0 +1,9 @@
+scenedetect>=0.6.4
+opencv-python
+librosa>=0.10
+numpy
+soundfile
+yt-dlp
+faster-whisper
+auto-editor
+ffmpeg-normalize

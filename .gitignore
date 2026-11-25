@@ -1,0 +1,27 @@
+# secrets
+.env
+
+# your footage, music and results stay on your PC
+raw/
+photos/
+output/
+promo/
+reference/
+music/*
+!music/.gitkeep
+
+# installed by setup.ps1 / INSTALL.bat (several GB)
+.venv/
+node_modules/
+tools/
+.agents/
+.claude/
+skills-lock.json
+
+# personal one-off script
+EXTRACT_HIMACHAL.bat
+
+# Python / editor caches
+__pycache__/
+*.pyc
+**/_editor_cache/
