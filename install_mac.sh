@@ -51,7 +51,10 @@ if [ -f "$ROOT/.venv/pyvenv.cfg" ] && ! grep -q "$TOOLS/python" "$ROOT/.venv/pyv
   echo "  folder was moved - rebuilding .venv"; rm -rf "$ROOT/.venv"
 fi
 [ -x "$ROOT/.venv/bin/python" ] || "$BIN/uv" venv --python 3.12 "$ROOT/.venv"
-"$BIN/uv" pip install --python "$ROOT/.venv/bin/python" -r "$ROOT/requirements.txt"
+# Intel Macs: newer numba/llvmlite ship no ready-made Intel builds; --no-build makes uv pick the
+# latest versions that do (otherwise it tries to compile LLVM and fails)
+EXTRA=(); [ "$OS-$A" = Darwin-x86_64 ] && EXTRA=(--no-build)
+"$BIN/uv" pip install --python "$ROOT/.venv/bin/python" "${EXTRA[@]}" -r "$ROOT/requirements.txt"
 
 step "4/4 Self-test"
 if "$ROOT/.venv/bin/python" "$ROOT/selftest.py"; then

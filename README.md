@@ -1,26 +1,50 @@
 # ReelLab
 
+[![install + self-test](https://github.com/katana7436/ReelLab/actions/workflows/test.yml/badge.svg)](https://github.com/katana7436/ReelLab/actions/workflows/test.yml)
+
 Turns your travel footage into fast-cut, beat-synced 9:16 Instagram reels that copy the pacing and colour of reels you like.
-It also includes a timeline editor in your browser and one-click posting to Instagram.
-Everything runs on your own PC: no subscription, no paid AI, and your footage never leaves your computer.
+It also includes a timeline editor in your browser and optional posting to Instagram.
+Everything runs on your own computer: free, no subscription, no paid AI, and your footage never leaves your computer.
 
-## Install (Windows 10/11)
-You need about **6 GB free disk** and internet for the first install. No admin rights are needed.
-1. On this GitHub page click **Code > Download ZIP**, then extract it, e.g. to `D:\ReelLab`. A short path without spaces is safest.
-2. Double-click **`INSTALL.bat`**. It downloads Python, FFmpeg, Node.js, Git and the AI models into the folder's `tools\` (10-30 min).
-   It ends with a table and every line should say WORKS. If Windows SmartScreen warns, click *More info > Run anyway*.
-3. Open a **new** terminal or restart so the PATH changes apply.
+**Works on Windows 10/11 and macOS (Apple Silicon and Intel).** Linux works too if ffmpeg is installed.
+Every change is tested automatically on clean Windows, Mac and Linux machines (badge above).
 
-Uninstall by deleting the folder. The installer also adds a few user environment variables (PATH and cache folders) pointing into it.
+**Video guide (95 s):** [watch / download](https://github.com/katana7436/ReelLab/releases/latest/download/ReelLab_guide.mp4)
+
+## Download
+Click the green **Code** button on this page, then **Download ZIP**.
+- **Windows:** right-click the zip > *Extract All*. A short path such as `D:\ReelLab` or `C:\ReelLab` is safest.
+- **Mac:** double-click the zip, then move the `ReelLab-main` folder somewhere easy, e.g. your home folder.
+
+You need about **3 GB free disk** and internet for the first install. No admin password is needed, and nothing is installed outside the ReelLab folder.
+
+## Install - Windows
+1. Open the folder and double-click **`INSTALL.bat`** (5-15 min).
+   If a blue *Windows protected your PC* box appears, click **More info > Run anyway**.
+2. It downloads Python and FFmpeg into the folder's `tools\`, installs the libraries, then runs a self-test.
+   Every line should say `PASS`, ending with **ALL CHECKS PASSED**.
+
+## Install - Mac
+1. Open **Terminal** (Cmd+Space, type *Terminal*, Enter).
+2. Type `bash ` (with a space), drag the file **`install_mac.sh`** from the folder into the Terminal window, then press **Enter** (5-15 min).
+3. It downloads Python and FFmpeg into the folder's `tools/`, installs the libraries, then runs a self-test ending with **ALL CHECKS PASSED**.
+
+You only do this once. After that the `.command` files (MAKE_REEL, START_EDITOR, FETCH_REFS) open with a double-click.
+(Double-clicking `INSTALL.command` also works, but macOS blocks downloaded scripts the first time; the Terminal way avoids that.)
+
+**Uninstall:** delete the folder. Moved the folder? Run the installer again; it repairs itself.
 
 ## Quick start
-1. Copy your clips into `raw\<trip>\` (e.g. `raw\goa\`). Splitting them into `horizontal\` / `vertical\` subfolders is optional.
-2. Put one song in `music\`.
-3. Optional: put links to reels whose style you want to copy in `reference\<trip>\links.txt`, one per line, then run `FETCH_REFS.bat`.
-4. Double-click `MAKE_REEL.bat` and type the trip name.
-5. Double-click `START_EDITOR.bat` to watch, fix and render the reel, then post it.
+In the steps below, Windows files end in `.bat` and Mac files end in `.command`.
+1. Copy your clips into `raw/<trip>/` (e.g. `raw/goa/`). Splitting them into `horizontal/` / `vertical/` subfolders is optional.
+2. Put one song in `music/` (or `music/<trip>/` for a song per trip).
+3. Optional: put links to reels whose style you want to copy in `reference/<trip>/links.txt`, one per line, then run **FETCH_REFS**.
+4. Double-click **MAKE_REEL** and type the trip name. Your reel appears in `output/<trip>/reel_preview.mp4`.
+5. Double-click **START_EDITOR** to watch, fix and re-render the reel in your browser, then post it.
 
 Use your own footage and music you're allowed to use. Reference reels are only analysed for style: never repost other people's videos or audio.
+
+**Something wrong?** Run the self-test: `.venv\Scripts\python.exe selftest.py` (Windows) or `.venv/bin/python selftest.py` (Mac), and open an issue with its output.
 
 ## Folders
 | Folder | What |
@@ -33,6 +57,8 @@ Use your own footage and music you're allowed to use. Reference reels are only a
 Trip names must match between `raw\` and `reference\` (e.g. `himachal`, `kerala`).
 
 ## Make a reel
+The commands below are for Windows. On a Mac use `.venv/bin/python` instead of `.\.venv\Scripts\python.exe`.
+
 1. Put a song in `music\`.
 2. `FETCH_REFS.bat`: downloads the reference reels and writes `reference\<trip>\_analysis\style.json`.
 3. `MAKE_REEL.bat` (asks for the trip), or:
@@ -50,7 +76,7 @@ Then open http://127.0.0.1:8765. Each block on the bottom track is one cut, and 
 - Click a clip, then pick a different shot on the right, or drag on the filmstrip to choose which part of the shot plays.
 - Move earlier/later, split on a beat, merge, delete, or toggle hero. Undo with Ctrl+Z.
 - **Save** rewrites `timeline.json` (the old one becomes `timeline.prev.json`) and `reel_timeline.fcpxml`.
-- **Render preview** makes the full-quality `reel_preview.mp4`. This is slow on this laptop.
+- **Render preview** makes the full-quality `reel_preview.mp4`. Rendering is slow on laptops without a graphics card.
 
 The editor plays low-res preview clips stored in `output\<trip>\_editor_cache\`. Your 4K HEVC footage won't play in a browser directly. The cache is safe to delete.
 Clip lengths stay on the beat grid, so swapping or moving changes which shot fills a slot, not how long the slot is.
@@ -62,12 +88,13 @@ Clip lengths stay on the beat grid, so swapping or moving changes which shot fil
 This detects the cuts (one clip per cut, use `--threshold 20` for more cuts) into `output\himachal_ref2_v2\`, using the video's own soundtrack.
 You can reorder, trim, change length, split, delete and render. Titles burned into the picture stay, and the clips can't be swapped for raw shots. The original MP4 is never changed.
 
-Shortcut: double-click `START_EDITOR.bat`. Opening `editor\index.html` directly does not work, because it needs the server.
+Shortcut: double-click `START_EDITOR.bat` (Windows) or `START_EDITOR.command` (Mac). Opening `editor\index.html` directly does not work, because it needs the server.
 
 ## Other tools
 - `make_captions.py video [--burn] [--lang hi]`: subtitles (faster-whisper)
 - `npx hyperframes ...`: titles and overlays rendered as video
-- `setup.ps1` / `INSTALL.bat`: (re)install everything into this folder. Re-run it if the folder is moved again.
+- `selftest.py`: checks the whole pipeline on generated test clips (the installers run it).
+- `setup.ps1`: Windows developer setup (adds Node.js, HyperFrames, Claude Code). Not needed to use ReelLab.
 
 ## Post to Instagram
 `insta_post.py` publishes a rendered reel using Instagram's official API. The file is uploaded straight from this laptop, so no public link is needed.
