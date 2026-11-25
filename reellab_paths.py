@@ -6,8 +6,15 @@
 - Puts the ffmpeg that INSTALL downloaded (tools/ffmpeg/bin or tools/bin) first on PATH,
   so nothing has to be added to the system PATH.
 """
-import os
+import os, sys
 from pathlib import Path
+
+# Windows consoles can't print emoji (common in downloaded reel names): never crash on them
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(errors="replace")
+    except (AttributeError, ValueError):
+        pass
 
 ROOT = Path(__file__).resolve().parent
 DATA = Path(os.environ.get("REELLAB_HOME") or ROOT).resolve()

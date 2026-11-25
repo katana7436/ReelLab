@@ -71,6 +71,9 @@ The commands below are for Windows. On a Mac use `.venv/bin/python` instead of `
    Writes `output\<trip>\reel_timeline.fcpxml` (DaVinci Resolve: File > Import > Timeline),
    `timeline.json` (for the editor), `shots.json`, and, without `--no-preview`, `reel_preview.mp4`.
 
+   A clip shows up sideways? The phone was turned while portrait-locked, so the file itself is sideways.
+   Leave it out with `--exclude <file name>` (several names allowed).
+
 ## Edit the timeline
 ```powershell
 .\.venv\Scripts\python.exe editor.py

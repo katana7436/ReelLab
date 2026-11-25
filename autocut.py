@@ -59,12 +59,14 @@ PIXELS = []   # downsampled RGB samples of your footage, for colour matching
 
 
 SRC = DATA / "raw"
+EXCLUDE = set()   # file names to skip (--exclude), e.g. a clip filmed sideways
 OUTDIR = DATA / "output"
 
 
 def find_shots(min_len):
     clips = sorted(p for p in SRC.rglob("*") if p.suffix.lower() in VIDEO_EXT
-                   and "live_photos" not in p.parts and "_to_delete" not in p.parts)
+                   and "live_photos" not in p.parts and "_to_delete" not in p.parts
+                   and p.name.lower() not in EXCLUDE)
     if not clips:
         sys.exit("No clips in raw\\ - add your footage first.")
     shots = []
@@ -295,8 +297,11 @@ def main():
     ap.add_argument("--trip", default=None, help="subfolder of raw\\ and reference\\ e.g. himachal")
     ap.add_argument("--orientation", choices=["horizontal", "vertical"], default=None)
     ap.add_argument("--music", help="song to cut to (default: first audio file in music/<trip>/ or music/)")
+    ap.add_argument("--exclude", nargs="+", default=[], metavar="FILE",
+                    help="clip file names to leave out, e.g. one filmed sideways")
     ap.add_argument("--match-strength", type=float, default=0.75, help="0-1, how hard to copy the colour")
     a = ap.parse_args()
+    EXCLUDE.update(n.lower() for n in a.exclude)
     global SRC, OUTDIR
     if a.trip:
         SRC = DATA / "raw" / a.trip
