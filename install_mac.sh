@@ -54,7 +54,7 @@ fi
 # Intel Macs: newer numba/llvmlite ship no ready-made Intel builds; --no-build makes uv pick the
 # latest versions that do (otherwise it tries to compile LLVM and fails)
 EXTRA=(); [ "$OS-$A" = Darwin-x86_64 ] && EXTRA=(--no-build)
-"$BIN/uv" pip install --python "$ROOT/.venv/bin/python" "${EXTRA[@]}" -r "$ROOT/requirements.txt"
+"$BIN/uv" pip install --python "$ROOT/.venv/bin/python" ${EXTRA[@]+"${EXTRA[@]}"} -r "$ROOT/requirements.txt"
 
 step "4/4 Self-test"
 if "$ROOT/.venv/bin/python" "$ROOT/selftest.py"; then
