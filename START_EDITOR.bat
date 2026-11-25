@@ -1,6 +1,6 @@
 @echo off
-REM Opens the timeline editor for reels made by autocut.py. Close this window to stop it.
+REM Opens the timeline editor in your browser. Close this window to stop it.
 cd /d "%~dp0"
-start "" http://127.0.0.1:8765
-"%~dp0.venv\Scripts\python.exe" editor.py %*
+if not exist ".venv\Scripts\python.exe" (echo ReelLab is not installed yet - double-click INSTALL.bat first. & pause & exit /b 1)
+"%~dp0.venv\Scripts\python.exe" editor.py --open %*
 pause

@@ -22,8 +22,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-ROOT = Path(__file__).resolve().parent
-REF = ROOT / "reference"
+from reellab_paths import ROOT, DATA   # also puts the bundled ffmpeg on PATH
+REF = DATA / "reference"
 OUT = REF / "_analysis"
 
 VIDEO_EXT = {".mp4", ".mov", ".mkv", ".webm", ".m4v"}
@@ -169,7 +169,7 @@ def main():
     a = ap.parse_args()
     global REF, OUT
     if a.trip:
-        REF = ROOT / "reference" / a.trip
+        REF = DATA / "reference" / a.trip
         OUT = REF / "_analysis"
     vids = sorted(p for p in REF.iterdir() if p.suffix.lower() in VIDEO_EXT) if REF.exists() else []
     if not vids:

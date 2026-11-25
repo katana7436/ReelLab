@@ -18,7 +18,7 @@ from pathlib import Path
 import cv2
 from scenedetect import detect, ContentDetector
 
-ROOT = Path(__file__).resolve().parent
+from reellab_paths import ROOT, DATA   # also puts the bundled ffmpeg on PATH
 
 
 def main():
@@ -33,7 +33,7 @@ def main():
     if not v.exists():
         sys.exit(f"not found: {v}")
     name = a.name or re.sub(r"[^A-Za-z0-9_-]+", "_", v.stem).lower()
-    out = ROOT / "output" / name
+    out = DATA / "output" / name
     if (out / "timeline.json").exists() and not a.force:
         sys.exit(f"{out}\\timeline.json already exists - add --force to start over (your edits there would be lost)")
 

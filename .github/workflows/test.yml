@@ -1,0 +1,35 @@
+name: install + self-test
+# Runs the real one-click installers on clean Windows, macOS (Apple Silicon + Intel) and Linux machines,
+# then the self-test (autocut, style match, import, editor server, captions engine).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, macos-15-intel, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./install_windows.ps1 -NoPause
+      - name: Install (Linux needs system ffmpeg)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Install (macOS / Linux)
+        if: runner.os != 'Windows'
+        run: bash ./install_mac.sh
+      - name: Upload install log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-log-${{ matrix.os }}
+          path: tools/install_log.txt
+          if-no-files-found: ignore

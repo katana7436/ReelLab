@@ -23,7 +23,7 @@ import numpy as np
 import librosa
 from scenedetect import detect, ContentDetector
 
-ROOT = Path(__file__).resolve().parent
+from reellab_paths import ROOT, DATA, INSTALL_HINT   # also puts the bundled ffmpeg on PATH
 VIDEO_EXT = {".mp4", ".mov", ".mkv", ".m4v", ".avi"}
 AUDIO_EXT = {".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"}
 FPS = 30
@@ -58,8 +58,8 @@ def shake_score(cap, t0, t1, src_fps):
 PIXELS = []   # downsampled RGB samples of your footage, for colour matching
 
 
-SRC = ROOT / "raw"
-OUTDIR = ROOT / "output"
+SRC = DATA / "raw"
+OUTDIR = DATA / "output"
 
 
 def find_shots(min_len):
@@ -290,24 +290,30 @@ def main():
     ap.add_argument("--lut", help="path to a .cube LUT for the preview")
     ap.add_argument("--min-shot", type=float, default=0.8, help="ignore shots shorter than this")
     ap.add_argument("--no-preview", action="store_true", help="skip rendering the MP4")
-    ap.add_argument("--style", nargs="?", const=str(ROOT / "reference" / "_analysis" / "style.json"),
+    ap.add_argument("--style", nargs="?", const=str(DATA / "reference" / "_analysis" / "style.json"),
                     help="copy pacing + colour from analyze_style.py output")
     ap.add_argument("--trip", default=None, help="subfolder of raw\\ and reference\\ e.g. himachal")
     ap.add_argument("--orientation", choices=["horizontal", "vertical"], default=None)
+    ap.add_argument("--music", help="song to cut to (default: first audio file in music/<trip>/ or music/)")
     ap.add_argument("--match-strength", type=float, default=0.75, help="0-1, how hard to copy the colour")
     a = ap.parse_args()
     global SRC, OUTDIR
     if a.trip:
-        SRC = ROOT / "raw" / a.trip
-        OUTDIR = ROOT / "output" / a.trip
-        if a.style == str(ROOT / "reference" / "_analysis" / "style.json"):
-            a.style = str(ROOT / "reference" / a.trip / "_analysis" / "style.json")
+        SRC = DATA / "raw" / a.trip
+        OUTDIR = DATA / "output" / a.trip
+        if a.style == str(DATA / "reference" / "_analysis" / "style.json"):
+            a.style = str(DATA / "reference" / a.trip / "_analysis" / "style.json")
     if a.orientation:
         SRC = SRC / a.orientation
 
     if not shutil.which("ffmpeg"):
-        sys.exit("ffmpeg not found - run setup.ps1 first.")
-    music = next((p for p in sorted((ROOT / "music").iterdir()) if p.suffix.lower() in AUDIO_EXT), None)
+        sys.exit("ffmpeg not found - " + INSTALL_HINT)
+    mdir = DATA / "music"
+    if a.music:
+        music = Path(a.music)
+    else:   # music/<trip>/ first, then music/
+        cands = ([mdir / a.trip] if a.trip else []) + [mdir]
+        music = next((p for d in cands if d.is_dir() for p in sorted(d.iterdir()) if p.suffix.lower() in AUDIO_EXT), None)
     if not music:
         sys.exit("No song in music\\ - add one audio file.")
     OUTDIR.mkdir(parents=True, exist_ok=True)

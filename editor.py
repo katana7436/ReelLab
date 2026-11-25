@@ -19,9 +19,9 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
-ROOT = Path(__file__).resolve().parent
+from reellab_paths import ROOT, DATA, INSTALL_HINT   # also puts the bundled ffmpeg on PATH
 UI = ROOT / "editor" / "index.html"
-OUT = ROOT / "output"
+OUT = DATA / "output"
 FFMPEG_SLOTS = threading.Semaphore(3)      # max parallel ffmpeg jobs (4K HEVC decode is heavy)
 RENDER = dict(state="idle", msg="", trip=None)
 POST = dict(state="idle", msg="", link=None)   # Instagram upload progress
@@ -340,16 +340,24 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--out", default=str(OUT), help="output folder holding <trip>\\timeline.json")
+    ap.add_argument("--open", action="store_true", help="open the editor in your web browser")
     a = ap.parse_args()
     OUT = Path(a.out).resolve()
     if not shutil.which("ffmpeg"):
-        sys.exit("ffmpeg not found - run setup.ps1 first.")
+        sys.exit("ffmpeg not found - " + INSTALL_HINT)
     trips = sorted(p.parent.name for p in OUT.glob("*/timeline.json"))
     print(f"ReelLab editor  ->  http://127.0.0.1:{a.port}")
     print(f"  timelines in {OUT}: {', '.join(trips) or 'none yet - run autocut.py first'}")
     print("  Ctrl+C to stop")
     try:
-        ThreadingHTTPServer(("127.0.0.1", a.port), H).serve_forever()
+        srv = ThreadingHTTPServer(("127.0.0.1", a.port), H)
+    except OSError:
+        sys.exit(f"port {a.port} is busy - is the editor already open? Or use --port 8766")
+    if a.open:
+        import webbrowser
+        threading.Timer(0.5, webbrowser.open, (f"http://127.0.0.1:{a.port}",)).start()
+    try:
+        srv.serve_forever()
     except KeyboardInterrupt:
         pass
 

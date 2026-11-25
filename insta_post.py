@@ -16,6 +16,7 @@ Meta app using Facebook Login for Business. Put the values in .env in the ReelLa
   IG_API_VERSION=v23.0     optional
 Standard library only: nothing extra to install.
 """
+import reellab_paths  # noqa: F401  puts the bundled ffmpeg on PATH
 import argparse, json, os, sys, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 

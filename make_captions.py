@@ -7,6 +7,7 @@ make_captions.py - speech to subtitles with faster-whisper (runs on CPU).
 
 Models: tiny / base / small (default, good on a laptop) / medium (better Hindi, slow).
 """
+import reellab_paths  # noqa: F401  puts the bundled ffmpeg on PATH
 import argparse, subprocess
 from pathlib import Path
 from faster_whisper import WhisperModel
