@@ -2,11 +2,13 @@
 .env
 
 # your footage, music and results stay on your PC
-raw/
+raw/*
+!raw/.gitkeep
 photos/
 output/
 promo/
-reference/
+reference/*
+!reference/.gitkeep
 music/*
 !music/.gitkeep
 
